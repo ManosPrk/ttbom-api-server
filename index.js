@@ -30,15 +30,20 @@ io.on('connection', (socket) => {
     });
 
     socket.on('createGameInstance', (data, ackCallback) => {
-
-        const player = GameServices.savePlayer(data.name, socket.id, true);
-        //use length of repository as Id for testing purposes
-        const gameId = GameServices.saveGameInstance(uuidv4(), player);
-        ackCallback({
-            successMessage: 'New game successfully created!',
-            gameId
-        });
-        socket.join(gameId);
+        if (data.gameId && !GameRepository.gameInstanceExists(data.gameId)) {
+            const player = GameServices.savePlayer(data.name, socket.id, true);
+            //use length of repository as Id for testing purposes
+            const gameId = GameServices.saveGameInstance(data.gameId, player);
+            ackCallback({
+                successMessage: 'New game successfully created!',
+                gameId
+            });
+            console.log(data.gameId, typeof data.gameId);
+            console.log(gameId, typeof gameId);
+            socket.join(gameId);
+        } else {
+            ackCallback({ errorMessage: 'Game id already exists' });
+        }
     });
 
     socket.once('isValidGame', (gameId, ackCallback) => {
@@ -63,6 +68,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('requestPlayersFromGame', (gameId, ackCallback) => {
+        console.log(gameId);
+
         if (GameRepository.gameInstanceExists(gameId)) {
             const players = GameRepository.getPlayersForGame(gameId);
             ackCallback(players);
