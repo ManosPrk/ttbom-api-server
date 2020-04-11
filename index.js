@@ -122,4 +122,4 @@ io.on('connection', (socket) => {
 });
 
 io.listen(process.env.PORT || 1337);
-console.log('listening on port ', port);
+console.log('listening on port ', 1337);
