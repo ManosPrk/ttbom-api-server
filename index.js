@@ -121,6 +121,5 @@ io.on('connection', (socket) => {
     })
 });
 
-const port = 1337;
-io.listen(port);
+io.listen(process.env.PORT || 1337);
 console.log('listening on port ', port);
