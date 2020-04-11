@@ -20,6 +20,9 @@ const GameRepository = {
         const gameToDeleteId = gameInstances.findIndex((game) => game.id = id);
         gameInstances.splice(gameToDeleteId, 1);
     },
+    gameInstanceExists: gameId => {
+        return gameInstances.some((game) => game.id === gameId);
+    },
     getPlayersForGame: (gameId) => {
         return gameInstances
             .find((game) => game.id === gameId)

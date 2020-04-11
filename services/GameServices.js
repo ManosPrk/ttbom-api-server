@@ -18,9 +18,6 @@ const GameService = {
     subscribeToGameInstance: (data, player) => {
         GameRepository.addPlayerToGameInstance(data.gameId, player);
         const game = GameRepository.getGameInstanceById(data.gameId);
-        if (!game) {
-            return { errorMessage: 'Game doesnt exist' };
-        }
         const players = GameRepository.getPlayersForGame(game.id);
         return { message: `${player.name} joined the game!`, players };
     }

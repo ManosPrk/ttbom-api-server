@@ -21,9 +21,6 @@ const io = require("socket.io")(server, {
     }
 });
 
-
-io.origins("*:*")
-
 io.on('connection', (socket) => {
     console.log(`a new user has connected with id ${socket.id}`)
 
@@ -51,16 +48,18 @@ io.on('connection', (socket) => {
 
     socket.on('subcribeToGameInstanceNewPlayer', (data, ackCallback) => {
         const newPlayer = GameServices.savePlayer(data.name, socket.id);
-        const responseObject = GameServices.subscribeToGameInstance(data, newPlayer);
-        console.log(responseObject);
-        console.log(GameRepository.getGameInstances());
-        if (responseObject.errorMessage) {
-            io.in(data.gameId).emit('notifyPlayers', responseObject.errorMessage);
-            ackCallback(responseObject.errorMessage);
+        if (GameRepository.gameInstanceExists(data.gameId)) {
+            const responseObject = GameServices.subscribeToGameInstance(data, newPlayer);
+            if (responseObject.errorMessage) {
+                io.in(data.gameId).emit('notifyPlayers', responseObject.errorMessage);
+                ackCallback(responseObject.errorMessage);
+            }
+            socket.join(data.gameId);
+            io.in(data.gameId).emit('notifyPlayers', `${data.name} joined the game!`, responseObject.players);
+            ackCallback(`successfully added ${data.name} to game with id ${data.gameId}`);
+        } else {
+            ackCallback({ errorMessage: 'Wrong game id' });
         }
-        socket.join(data.gameId);
-        io.in(data.gameId).emit('notifyPlayers', `${data.name} joined the game!`, responseObject.players);
-        ackCallback(`successfully added ${data.name} to game with id ${data.gameId}`);
     });
 
     socket.on('requestPlayersFromGame', (gameId, ackCallback) => {
