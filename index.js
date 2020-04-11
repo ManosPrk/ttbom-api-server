@@ -1,8 +1,28 @@
-const io = require('socket.io')();
+// const io = require('socket.io')();
 const uuidv4 = require('uuid').v4;
+const express = require('express');
+const http = require('http');
 const { getRandomSecs } = require('./Utilities');
 const GameRepository = require('./repository/GameRepository');
 const GameServices = require('./services/GameServices');
+
+const app = express();
+const server = http.createServer(app);
+
+const io = require("socket.io")(server, {
+    handlePreflightRequest: (req, res) => {
+        const headers = {
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Origin": req.headers.origin, //or the specific origin you want to give access to,
+            "Access-Control-Allow-Credentials": true
+        };
+        res.writeHead(200, headers);
+        res.end();
+    }
+});
+
+
+io.origins("*:*")
 
 io.on('connection', (socket) => {
     console.log(`a new user has connected with id ${socket.id}`)
