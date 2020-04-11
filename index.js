@@ -63,8 +63,12 @@ io.on('connection', (socket) => {
     });
 
     socket.on('requestPlayersFromGame', (gameId, ackCallback) => {
-        const players = GameRepository.getPlayersForGame(gameId);
-        ackCallback(players);
+        if (GameRepository.gameInstanceExists(gameId)) {
+            const players = GameRepository.getPlayersForGame(gameId);
+            ackCallback(players);
+        } else {
+            ackCallback({ errorMessage: 'Wrong game id' })
+        }
     });
 
     socket.on('requestDiceSide', (gameId, ackCallback) => {
@@ -119,6 +123,6 @@ io.on('connection', (socket) => {
         console.log(`user with id ${socket.id} disconnected!`);
     })
 });
-
-io.listen(process.env.PORT || 1337);
-console.log('listening on port ', 1337);
+const port = process.env.PORT || 1337;
+io.listen(port);
+console.log('listening on port ', port);
