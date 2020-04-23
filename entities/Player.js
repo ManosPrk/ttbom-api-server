@@ -1,9 +1,10 @@
 class Player {
-    constructor(_id, _name, _isLeader, _roundsLost) {
+    constructor(_id, _name, _socketId, _isGameMaster, _roundsLost) {
         this.id = _id;
         this.name = _name;
-        this.isLeader = _isLeader;
+        this.isGameMaster = _isGameMaster;
         this.roundsLost = _roundsLost;
+        this.socketId = _socketId;
     }
 }
 

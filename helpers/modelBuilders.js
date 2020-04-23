@@ -15,7 +15,7 @@ module.exports = {
         return new GameInstance(id, players);
     },
 
-    buildPlayer: (id, name, isLeader = false, roundsLost = 0) => {
+    buildPlayer: (id, name, socketId, isGameMaster = false, roundsLost = 0) => {
         if (!id || !name) {
             return {
                 error:
@@ -25,7 +25,7 @@ module.exports = {
             }
         }
 
-        return new Player(id, name, isLeader, roundsLost);
+        return new Player(id, name, socketId, isGameMaster, roundsLost);
     }
 }
 
