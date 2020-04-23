@@ -4,9 +4,9 @@ const { buildGameInstance, buildPlayer } = require('../helpers/modelBuilders');
 const { getRandomItemFromArray } = require('../Utilities');
 
 const GameService = {
-    savePlayer: (_player, socketId, isLeader = false) => {
+    savePlayer: (_player, playerId, socketId, isLeader = false) => {
         // const existingPlayer = PlayerRepository.getPlayerByName(_player);
-        const newPlayer = buildPlayer(socketId, _player, isLeader);
+        const newPlayer = buildPlayer(playerId, _player, socketId, isLeader);
         const player = PlayerRepository.addPlayer(newPlayer);
         return player;
     },
@@ -18,7 +18,10 @@ const GameService = {
     subscribeToGameInstance: (data, player) => {
         GameRepository.addPlayerToGameInstance(data.gameId, player);
         const game = GameRepository.getGameInstanceById(data.gameId);
-        const players = GameRepository.getPlayersForGame(game.id);
+        const repoPlayers = GameRepository.getPlayersForGame(game.id);
+        const players = repoPlayers.map((player) => {
+            return { name: player.name, roundsLost: player.roundsLost }
+        })
         return { message: `${player.name} joined the game!`, players };
     }
     ,
@@ -29,23 +32,26 @@ const GameService = {
         return false;
     },
     getRandomItem: (gameId, playerId, arrayName) => {
-        console.log(gameId);
         const game = GameRepository.getGameInstanceById(gameId);
-        console.log('gameservice line 36', game)
         if (game) {
-            let item = getRandomItemFromArray(game[arrayName]);
-            const player = GameRepository.getPlayerByIdForGame(gameId, playerId);
-            if (!player) {
-                return { errorMessage: 'Only the gamemaster can roll the dice' };
-            }
-            if (player.isLeader) {
+            if (GameRepository.isPlayerGameMaster(gameId, playerId)) {
+                let item = getRandomItemFromArray(game[arrayName]);
                 return item;
+            } else {
+                return { errorMessage: 'Only the gamemaster can roll the dice' };
             }
         }
         else {
             return { errorMessage: 'could not find associated game with id:' + gameId }
         }
     },
+    getPlayersModel: (gameId) => {
+        const players = GameRepository.getPlayersForGame(gameId);
+        const modelPlayers = players.map((player) => {
+            return { name: player.name, roundsLost: player.roundsLost }
+        })
+        return modelPlayers;
+    }
 };
 
 Object.freeze(GameService);
