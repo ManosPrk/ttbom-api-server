@@ -7,6 +7,9 @@ const GameRepository = {
     getGameInstanceById: id => {
         return gameInstances.find((game) => game.id === id);
     },
+    getGameInstanceByPlayerId: (playerId) => {
+        return gameInstances.find((game) => game.players.some((player) => player.id === playerId))
+    },
     addPlayerToGameInstance: (id, player) => {
         gameInstances
             .find((game) => game.id === id)
@@ -47,6 +50,13 @@ const GameRepository = {
             .filter((player) => player.id !== playerId);
         gameInstances.player = newPlayers;
     },
+    isPlayerGameMaster: (gameId, clientId) => {
+        return gameInstances
+            .find((game) => game.id === gameId)
+            .players
+            .find((player) => player.id === clientId)
+            .isGameMaster;
+    }
 };
 
 Object.freeze(GameRepository);
