@@ -8,6 +8,7 @@ class GameInstance {
         this.currentCard = null;
         this.isCardDrawn = false;
         this.isDiceRolled = false;
+        this.roundStarted = false;
         this.cardsLeft = this.cards.length;
         this.playerWithBomb = _player;
         this.getCurrentCard = () => this.currentCard;
