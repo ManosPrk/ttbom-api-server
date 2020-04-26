@@ -1,5 +1,6 @@
 const PlayerRepository = require('../repository/PlayerRepository');
 const GameRepository = require('../repository/GameRepository');
+const uuidv4 = require('uuid').v4;
 const { buildGameInstance, buildPlayer } = require('../helpers/modelBuilders');
 const { getRandomItemFromArray } = require('../Utilities');
 
@@ -15,7 +16,22 @@ const GameService = {
         const gameInstanceToAddToRepo = buildGameInstance(gameId, player);
         return GameRepository.addGameInstance(gameInstanceToAddToRepo);
     },
+    getPlayerToJoin: (data, socketId) => {
+        if (data.clientId) {
+            if (GameRepository.playerIsInGame(data.clientId)) {
+                return GameRepository.getPlayerByIdForGame(data.gameId, data.clientId);
+            } else {
+                return instance.savePlayer(data.name, data.clientId, socketId);
+            }
+        } else {
+            return instance.savePlayer(data.name, uuidv4(), socketId);
+        }
+    },
     subscribeToGameInstance: (data, player) => {
+        console.log(player);
+        if (GameRepository.playerIsInGame(player.id)) {
+            return { rejoinMessage: `${player.name} rejoined the game!` };
+        }
         GameRepository.addPlayerToGameInstance(data.gameId, player);
         const game = GameRepository.getGameInstanceById(data.gameId);
         const repoPlayers = GameRepository.getPlayersForGame(game.id);
@@ -23,19 +39,18 @@ const GameService = {
             return { name: player.name, roundsLost: player.roundsLost }
         })
         return { message: `${player.name} joined the game!`, players };
-    }
-    ,
+    },
     isInstanceValid: (gameId) => {
         if (GameRepository.getGameInstanceById(gameId)) {
             return true;
         }
         return false;
     },
-    getRandomItem: (gameId, playerId, arrayName) => {
+    getRandomItem: (gameId, playerId, arrayName, removeFromArray = false) => {
         const game = GameRepository.getGameInstanceById(gameId);
         if (game) {
             if (GameRepository.isPlayerGameMaster(gameId, playerId)) {
-                let item = getRandomItemFromArray(game[arrayName]);
+                let item = getRandomItemFromArray(game[arrayName], removeFromArray);
                 return item;
             } else {
                 return { errorMessage: 'Only the gamemaster can roll the dice' };
@@ -51,9 +66,31 @@ const GameService = {
             return { name: player.name, roundsLost: player.roundsLost }
         })
         return modelPlayers;
-    }
+    },
+    startGame: (playerId) => {
+        let game = GameRepository.getGameInstanceByPlayerId(playerId);
+        if (!game || !GameRepository.isPlayerGameMaster(game.id, playerId)) {
+            return { errorMessage: 'Wait for the Game master to start the game' }
+        } else {
+            game.playerWithBomb = GameRepository.getPlayerByIdForGame(game.id, playerId);
+            return { message: 'Let the games begin!', gameMasterMessage: 'Game started!', game };
+        }
+    },
+    gameEnded: (gameId) => {
+        // gameEnded = true;
+        game = GameRepository.getGameInstanceById(gameId);
+        const loser = GameRepository.getPlayerByIdForGame(game.id, game.playerWithBomb.id);
+        loser.roundsLost++;
+        return loser;
+    },
+    resetGame: (game) => {
+        game.playerWithBomb = game.players[0];
+        game.isDiceRolled = false;
+        game.isCardDrawn = false;
+    },
 };
 
 Object.freeze(GameService);
+const instance = GameService;
 
-module.exports = GameService;
+module.exports = instance;
