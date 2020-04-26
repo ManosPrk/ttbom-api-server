@@ -71,8 +71,11 @@ const GameService = {
         let game = GameRepository.getGameInstanceByPlayerId(playerId);
         if (!game || !GameRepository.isPlayerGameMaster(game.id, playerId)) {
             return { errorMessage: 'Wait for the Game master to start the game' }
+        } else if (game.roundStarted) {
+            return { errorMessage: 'You have already started the round!' }
         } else {
             game.playerWithBomb = GameRepository.getPlayerByIdForGame(game.id, playerId);
+            game.roundStarted = true;
             return { message: 'Let the games begin!', gameMasterMessage: 'Game started!', game };
         }
     },
@@ -87,6 +90,7 @@ const GameService = {
         game.playerWithBomb = game.players[0];
         game.isDiceRolled = false;
         game.isCardDrawn = false;
+        game.roundStarted = false;
     },
 };
 
