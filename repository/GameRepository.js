@@ -56,6 +56,9 @@ const GameRepository = {
             .players
             .find((player) => player.id === clientId)
             .isGameMaster;
+    },
+    playerIsInGame: (playerId) => {
+        return gameInstances.some((game) => game.players.some((player) => player.id === playerId));
     }
 };
 
