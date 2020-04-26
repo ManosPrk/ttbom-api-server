@@ -1,4 +1,4 @@
-// const io = require('socket.io')();
+
 const uuidv4 = require('uuid').v4;
 const express = require('express');
 const http = require('http');
@@ -25,17 +25,11 @@ const io = require("socket.io")(server, {
 io.on('connection', (socket) => {
     console.log(`a new user has connected with id ${socket.id}`)
 
-    socket.on('subscribeToPlayers', (_player) => {
-        GameServices.savePlayer(_player);
-        socket.emit('addMessage', 'player subscribed');
-    });
-
     socket.on('createGameInstance', (data, ackCallback) => {
         if (GameRepository.getGameInstanceByPlayerId(data.clientId)) {
             ackCallback({ errorMessage: 'You already have an active game' })
         } if (data.gameId && !GameRepository.gameInstanceExists(data.gameId)) {
             const player = GameServices.savePlayer(data.name, uuidv4(), socket.id, true);
-            //use length of repository as Id for testing purposes
             const gameId = GameServices.saveGameInstance(data.gameId, player);
             ackCallback({
                 successMessage: 'New game successfully created!',
@@ -75,7 +69,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('addClientToGameRoom', (clientId, ackCallback) => {
-        console.log(clientId);
         const game = GameRepository.getGameInstanceByPlayerId(clientId);
 
         if (!game) {
@@ -151,26 +144,6 @@ io.on('connection', (socket) => {
                 GameServices.resetGame(game);
             }, 5 * 1000);
         }
-
-        // let game = GameRepository.getGameInstanceByPlayerId(playerId);
-        // if (!game || !GameRepository.isPlayerGameMaster(game.id, playerId)) {
-        //     ackCallback({ errorMessage: 'Wait for the Game master to start the game' })
-        // } else {
-        //     game.playerWithBomb = GameRepository.getPlayerByIdForGame(game.id, playerId);
-        //     let remainingTime = getRandomSecs();
-        //     // ackCallback({ message: 'game started!' });
-        //     io.to(game.playerWithBomb.socketId).emit('game-started', { gameMasterMessage: 'Game started!' });
-        //     socket.to(game.id).emit('game-started', { message: 'Let the games begin!' });
-        //     // console.log(remainingTime);
-        //     setTimeout(() => {
-        //         // gameEnded = true;
-        //         game = GameRepository.getGameInstanceById(game.id);
-        //         const loser = GameRepository.getPlayerByIdForGame(game.id, game.playerWithBomb.id);
-        //         loser.roundsLost++;
-        //         io.in(game.id).emit('game-ended', { name: loser.name, roundsLost: loser.roundsLost });
-        //         GameServices.resetGame(game);
-        //     }, 10 * 1000);
-        // }
     });
 
     socket.on('pass-bomb', (playerId, ackCallback) => {
