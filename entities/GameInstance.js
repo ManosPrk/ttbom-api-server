@@ -1,7 +1,7 @@
 class GameInstance {
-    constructor(_id, _player) {
+    constructor(_id) {
         this.id = _id;
-        this.players = [_player];
+        this.players = [];
         this.diceSides = ['TICK', 'TACK', 'BOOM'];
         this.cards = ['ΒΙΟ', 'ΒΕ', 'ΡΑΣ', 'ΡΙ', 'ΓΡΑ', 'ΔΑ', 'ΚΟΙ', 'ΚΕ', 'ΝΤΕ', 'ΝΟ', 'ΤΡΟ', 'ΤΙ', 'ΣΤΑ', 'ΣΕ', 'ΛΟΣ', 'ΛΙ', 'ΒΟΣ'];
         this.currentSide = null;
@@ -10,7 +10,7 @@ class GameInstance {
         this.isDiceRolled = false;
         this.roundStarted = false;
         this.cardsLeft = this.cards.length;
-        this.playerWithBomb = _player;
+        this.playerWithBomb = null;
         this.getCurrentCard = () => this.currentCard;
         this.getCurrentSide = () => this.currentSide;
         this.getCardsLeft = () => this.cards.length;

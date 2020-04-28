@@ -10,9 +10,6 @@ const GameRepository = {
     getGameInstanceByPlayerId: (playerId) => {
         return gameInstances.find((game) => game.players.some((player) => player.id === playerId))
     },
-    getGameInstanceByPlayerSocketId: (sockedId) => {
-        return gameInstances.find((game) => game.players.some((player) => player.socketId === sockedId))
-    },
     addPlayerToGameInstance: (id, player) => {
         gameInstances
             .find((game) => game.id === id)
@@ -40,38 +37,37 @@ const GameRepository = {
             .players
             .find((player) => player.id === playerId);
     },
-    getPlayerBySocketIdForGame: (gameId, socketId) => {
-        return gameInstances
-            .find((game) => game.id === gameId)
-            .players
-            .find((player) => player.socketId === socketId);
-    },
     getPlayerByNameForGame: (gameId, playerName) => {
         return gameInstances
             .find((game) => game.id === gameId)
             .players
             .find((player) => player.name === playerName);
     },
+    getNextPlayer: (gameId, playerId) => {
+        const currentPlayerIndex = gameInstances
+            .find((game) => game.id === gameId)
+            .players
+            .findIndex((player) => player.id === playerId);
+        return gameInstances
+            .find((game) => game.id === gameId)
+            .players[currentPlayerIndex + 1]
+    },
     removePlayerFromGame: (id, playerId) => {
-        const newPlayers = gameInstances
-            .find((game) => game.id === id)
+        let game = gameInstances.find((game) => game.id === id);
+        game.players = game
             .players
             .filter((player) => player.id !== playerId);
-        gameInstances.player = newPlayers;
     },
-    isPlayerGameMaster: (gameId, clientId) => {
+    isPlayerGameMaster: (gameId, playerId) => {
         return gameInstances
             .find((game) => game.id === gameId)
             .players
-            .find((player) => player.id === clientId)
+            .find((player) => player.id === playerId)
             .isGameMaster;
     },
     playerIsInGame: (playerId) => {
         return gameInstances.some((game) => game.players.some((player) => player.id === playerId));
     },
-    playerIsInGameBySocketId: (sockedId) => {
-        return gameInstances.some((game) => game.players.some((player) => player.socketId === sockedId));
-    }
 };
 
 Object.freeze(GameRepository);

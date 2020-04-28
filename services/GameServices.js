@@ -5,36 +5,23 @@ const { buildGameInstance, buildPlayer } = require('../helpers/modelBuilders');
 const { getRandomItemFromArray } = require('../Utilities');
 
 const GameService = {
-    savePlayer: (_player, playerId, socketId, isLeader = false) => {
+    savePlayer: (_player, playerId, isLeader = false) => {
         // const existingPlayer = PlayerRepository.getPlayerByName(_player);
-        const newPlayer = buildPlayer(playerId, _player, socketId, isLeader);
+        const newPlayer = buildPlayer(playerId, _player, isLeader);
         const player = PlayerRepository.addPlayer(newPlayer);
         return player;
     },
     //Save player to repository instead of playerId
     saveGameInstance: (gameId, player) => {
-        const gameInstanceToAddToRepo = buildGameInstance(gameId, player);
+        const gameInstanceToAddToRepo = buildGameInstance(gameId);
         return GameRepository.addGameInstance(gameInstanceToAddToRepo);
     },
-    getPlayerToJoin: (data, socketId) => {
-        if (data.clientId) {
-            if (GameRepository.playerIsInGame(data.clientId)) {
-                return GameRepository.getPlayerByIdForGame(data.gameId, data.clientId);
-            } else {
-                return instance.savePlayer(data.name, data.clientId, socketId);
-            }
-        } else {
-            return instance.savePlayer(data.name, uuidv4(), socketId);
-        }
-    },
     subscribeToGameInstance: (data, player) => {
-        console.log(player);
-        if (GameRepository.playerIsInGame(player.id)) {
-            return { rejoinMessage: `${player.name} rejoined the game!` };
+        if (!GameRepository.gameInstanceExists(data.gameId)) {
+            return { errorMessage: "Game id doesnt exist!" };
         }
         GameRepository.addPlayerToGameInstance(data.gameId, player);
-        const game = GameRepository.getGameInstanceById(data.gameId);
-        const repoPlayers = GameRepository.getPlayersForGame(game.id);
+        const repoPlayers = GameRepository.getPlayersForGame(data.gameId);
         const players = repoPlayers.map((player) => {
             return { name: player.name, roundsLost: player.roundsLost }
         })
@@ -46,19 +33,10 @@ const GameService = {
         }
         return false;
     },
-    getRandomItem: (gameId, playerId, arrayName, removeFromArray = false) => {
+    getRandomItem: (gameId, arrayName, removeFromArray = false) => {
         const game = GameRepository.getGameInstanceById(gameId);
-        if (game) {
-            if (GameRepository.isPlayerGameMaster(gameId, playerId)) {
-                let item = getRandomItemFromArray(game[arrayName], removeFromArray);
-                return item;
-            } else {
-                return { errorMessage: 'Only the gamemaster can roll the dice' };
-            }
-        }
-        else {
-            return { errorMessage: 'could not find associated game with id:' + gameId }
-        }
+        let item = getRandomItemFromArray(game[arrayName], removeFromArray);
+        return item;
     },
     getPlayersModel: (gameId) => {
         const players = GameRepository.getPlayersForGame(gameId);
@@ -75,6 +53,7 @@ const GameService = {
             return { errorMessage: 'You have already started the round!' }
         } else {
             game.playerWithBomb = GameRepository.getPlayerByIdForGame(game.id, playerId);
+            console.log(game.playerWithBomb);
             game.roundStarted = true;
             return { message: 'Let the games begin!', gameMasterMessage: 'Game started!', game };
         }
@@ -91,6 +70,17 @@ const GameService = {
         game.isDiceRolled = false;
         game.isCardDrawn = false;
         game.roundStarted = false;
+    },
+    disconnectPlayer: (game, playerId) => {
+        const player = GameRepository.getPlayerByIdForGame(game.id, playerId);
+        if (player.isGameMaster && game.players.length > 1) {
+            const nextPlayer = GameRepository.getNextPlayer(game.id, playerId);
+            console.log('next player', nextPlayer)
+            nextPlayer.isGameMaster = true;
+        }
+        GameRepository.removePlayerFromGame(game.id, playerId);
+        console.log(game);
+        return { gameId: game.id, players: instance.getPlayersModel(game.id), messsage: `Successfully removed ${player.name} from game ${game.id}` };
     },
 };
 

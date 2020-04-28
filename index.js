@@ -23,18 +23,14 @@ const io = require("socket.io")(server, {
 });
 
 io.on('connection', (socket) => {
-    console.log(`a new user has connected with id ${socket.id}`)
 
     socket.on('create-game-instance', (data, ackCallback) => {
-        if (GameRepository.getGameInstanceByPlayerId(data.clientId)) {
-            ackCallback({ errorMessage: 'You already have an active game' })
-        } if (data.gameId && !GameRepository.gameInstanceExists(data.gameId)) {
-            const player = GameServices.savePlayer(data.name, uuidv4(), socket.id, true);
-            const gameId = GameServices.saveGameInstance(data.gameId, player);
+        if (data.gameId && !GameRepository.gameInstanceExists(data.gameId)) {
+            const gameId = GameServices.saveGameInstance(data.gameId);
+
             ackCallback({
                 successMessage: 'New game successfully created!',
-                gameId,
-                clientId: player.id
+                gameId
             });
         } else {
             ackCallback({ errorMessage: 'Game id already exists' });
@@ -42,46 +38,44 @@ io.on('connection', (socket) => {
     });
 
     socket.on('join-game-instance', (data, ackCallback) => {
-        if (GameRepository.gameInstanceExists(data.gameId)) {
-            const player = GameServices.getPlayerToJoin(data, socket.id);
-            const responseObject = GameServices.subscribeToGameInstance(data, player);
-            if (responseObject.rejoinMessage) {
-                io.in(data.gameId).emit('notifyPlayers', responseObject.rejoinMessage);
-                ackCallback({ rejoinMessage: 'rejoing game....' });
-            } else {
-                io.in(data.gameId).emit('notifyPlayers', `${data.name} joined the game!`, responseObject.players);
-                ackCallback({ message: `successfully added ${data.name} to game with id ${data.gameId}`, clientId: player.id });
-            }
+        if (!GameRepository.gameInstanceExists(data.gameId)) {
+            ackCallback({ errorMessage: "Game instance doesnt exist!" });
         } else {
-            ackCallback({ errorMessage: 'Game ID doesnt exist' });
+            ackCallback({ successMessage: 'Joining game!' });
         }
     });
 
-    socket.once('is-valid-game', (clientId, ackCallback) => {
-        const game = GameRepository.getGameInstanceByPlayerId(clientId);
+    socket.once('is-valid-game', (gameId, ackCallback) => {
+        const game = GameRepository.gameInstanceExists(gameId);
 
         if (game) {
             ackCallback(GameServices.isInstanceValid(game.id));
         } else {
-            ackCallback({ errorMessage: 'Client id is not valid' });
+            ackCallback({ errorMessage: 'Game id is not valid' });
         }
 
     });
 
-    socket.on('add-clien-to-game-room', (clientId, ackCallback) => {
-        const game = GameRepository.getGameInstanceByPlayerId(clientId);
+    socket.on('add-client-to-game-room', (data, ackCallback) => {
+        const game = GameRepository.getGameInstanceById(data.gameId);
         if (!game) {
-            ackCallback({ errorMessage: 'client not registered' });
+            ackCallback({ errorMessage: 'Game id doesnt exist' });
         } else {
-            const player = GameRepository.getPlayerByIdForGame(game.id, clientId);
-            player.socketId = socket.id;
+            let player;
+            const game = GameRepository.getGameInstanceById(data.gameId);
+            if (game.players.length === 0) {
+                player = GameServices.savePlayer(data.name, socket.id, true);
+            } else {
+                player = GameServices.savePlayer(data.name, socket.id);
+            }
+            GameRepository.addPlayerToGameInstance(data.gameId, player);
             socket.join(game.id);
+            socket.to(data.gameId).emit('notify-players', `${data.name} joined the game!`, GameServices.getPlayersModel(game.id));
             ackCallback({ side: game.currentSide, card: game.currentCard, cardsLeft: game.getCardsLeft, isDiceRolled: game.isDiceRolled, isCardDrawn: game.isCardDrawn });
         }
     })
 
     socket.on('request-players-from-game', (gameId, ackCallback) => {
-
         if (GameRepository.gameInstanceExists(gameId)) {
             const players = GameServices.getPlayersModel(gameId);
             ackCallback(players);
@@ -90,49 +84,51 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('request-dice-side', (clientId, ackCallback) => {
-        const game = GameRepository.getGameInstanceByPlayerId(clientId);
-        const side = GameServices.getRandomItem(game.id, clientId, 'diceSides');
-        if (side.errorMessage) {
-            ackCallback({ errorMessage: side.errorMessage })
-        } else if (game.isDiceRolled) {
+    socket.on('request-dice-side', (ackCallback) => {
+        const game = GameRepository.getGameInstanceByPlayerId(socket.id);
+        const player = GameRepository.getPlayerByIdForGame(game.id, socket.id);
+        const side = GameServices.getRandomItem(game.id, 'diceSides');
+        if (game.isDiceRolled) {
             ackCallback({ errorMessage: 'You have already rolled the dice' })
-        } else {
+
+        } else if (GameRepository.isPlayerGameMaster(game.id, player.id)) {
             game.setCurrentSide(side);
             game.isDiceRolled = true;
             ackCallback({
                 side: game.getCurrentSide()
             });
-            socket.to(game.id).emit('updateDiceSide', { side });
+            socket.to(game.id).emit('update-dice-side', { side });
+
+        } else {
+            ackCallback({ errorMessage: "Only the GameMaster can roll the dice" })
         }
 
     });
 
-    socket.on('request-card', (clientId, ackCallback) => {
-        const game = GameRepository.getGameInstanceByPlayerId(clientId);
-
-        const card = GameServices.getRandomItem(game.id, clientId, 'cards', true);
-        if (card.errorMessage) {
-            ackCallback({ errorMessage: card.errorMessage });
-        }
-        else if (game.isCardDrawn) {
-            ackCallback({ errorMessage: 'You already drew a card' })
-        } else {
+    socket.on('request-card', (ackCallback) => {
+        const game = GameRepository.getGameInstanceByPlayerId(socket.id);
+        const player = GameRepository.getPlayerByIdForGame(game.id, socket.id);
+        if (game.isCardDrawn) {
+            ackCallback({ errorMessage: "You have already drew a card" })
+        } else if (GameRepository.isPlayerGameMaster(game.id, player.id)) {
+            const card = GameServices.getRandomItem(game.id, 'cards', true);
             game.isCardDrawn = true;
             game.setCurrentCard(card);
             game.setCardsLeft();
             ackCallback({ card: game.getCurrentCard(), cardsLeft: game.cardsLeft });
-            socket.to(game.id).emit('updateCard', { card, cardsLeft: game.cardsLeft });
+            socket.to(game.id).emit('update-card', { card, cardsLeft: game.cardsLeft });
+        } else {
+            ackCallback({ errorMessage: "Only the GameMaster can draw a card" })
         }
 
     });
 
-    socket.on('start-game', (playerId, ackCallback) => {
-        const startGameResponse = GameServices.startGame(playerId);
+    socket.on('start-game', (ackCallback) => {
+        const startGameResponse = GameServices.startGame(socket.id);
         if (startGameResponse.errorMessage) {
             ackCallback({ errorMessage: 'Wait for the Game master to start the game' })
         } else {
-            io.to(startGameResponse.game.playerWithBomb.socketId).emit('game-started', { gameMasterMessage: startGameResponse.gameMasterMessage });
+            io.to(socket.id).emit('game-started', { gameMasterMessage: startGameResponse.gameMasterMessage });
             socket.to(startGameResponse.game.id).emit('game-started', { message: startGameResponse.message });
             setTimeout(() => {
                 const loser = GameServices.gameEnded(startGameResponse.game.id);
@@ -145,11 +141,11 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('pass-bomb', (playerId, ackCallback) => {
+    socket.on('pass-bomb', (ackCallback) => {
 
         let game = GameRepository
-            .getGameInstanceByPlayerId(playerId);
-        if (playerId === game.playerWithBomb.id) {
+            .getGameInstanceByPlayerId(socket.id);
+        if (game.playerWithBomb.id === socket.id) {
             const players = GameRepository.getPlayersForGame(game.id);
             let currentIdx = players.findIndex((player) => player.id === game.playerWithBomb.id);
             currentIdx++;
@@ -157,7 +153,7 @@ io.on('connection', (socket) => {
                 ? players[0]
                 : players[currentIdx];
             game.playerWithBomb = nextPlayer;
-            io.to(`${nextPlayer.socketId}`).emit('change-player', `${nextPlayer.name}, Its your turn!`);
+            io.to(`${nextPlayer.id}`).emit('change-player', `${nextPlayer.name}, Its your turn!`);
             ackCallback({ message: `Bomb passed to ${nextPlayer.name}` })
         } else {
             ackCallback({ errorMessage: 'Only the player with the bomb can pass it' })
@@ -169,6 +165,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
+        const game = GameRepository.getGameInstanceByPlayerId(socket.id);
+        if (game) {
+            const { gameId, message, players } = GameServices.disconnectPlayer(game, socket.id);
+            socket.in(gameId).emit('player-disconnect', { message, players });
+        }
         console.log(`user with id ${socket.id} disconnected!`);
     })
 });
