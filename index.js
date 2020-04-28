@@ -25,7 +25,7 @@ const io = require("socket.io")(server, {
 io.on('connection', (socket) => {
     console.log(`a new user has connected with id ${socket.id}`)
 
-    socket.on('createGameInstance', (data, ackCallback) => {
+    socket.on('create-game-instance', (data, ackCallback) => {
         if (GameRepository.getGameInstanceByPlayerId(data.clientId)) {
             ackCallback({ errorMessage: 'You already have an active game' })
         } if (data.gameId && !GameRepository.gameInstanceExists(data.gameId)) {
@@ -57,7 +57,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.once('isValidGame', (clientId, ackCallback) => {
+    socket.once('is-valid-game', (clientId, ackCallback) => {
         const game = GameRepository.getGameInstanceByPlayerId(clientId);
 
         if (game) {
@@ -68,9 +68,8 @@ io.on('connection', (socket) => {
 
     });
 
-    socket.on('addClientToGameRoom', (clientId, ackCallback) => {
+    socket.on('add-clien-to-game-room', (clientId, ackCallback) => {
         const game = GameRepository.getGameInstanceByPlayerId(clientId);
-
         if (!game) {
             ackCallback({ errorMessage: 'client not registered' });
         } else {
@@ -81,7 +80,7 @@ io.on('connection', (socket) => {
         }
     })
 
-    socket.on('requestPlayersFromGame', (gameId, ackCallback) => {
+    socket.on('request-players-from-game', (gameId, ackCallback) => {
 
         if (GameRepository.gameInstanceExists(gameId)) {
             const players = GameServices.getPlayersModel(gameId);
@@ -91,7 +90,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('requestDiceSide', (clientId, ackCallback) => {
+    socket.on('request-dice-side', (clientId, ackCallback) => {
         const game = GameRepository.getGameInstanceByPlayerId(clientId);
         const side = GameServices.getRandomItem(game.id, clientId, 'diceSides');
         if (side.errorMessage) {
@@ -109,7 +108,7 @@ io.on('connection', (socket) => {
 
     });
 
-    socket.on('requestCard', (clientId, ackCallback) => {
+    socket.on('request-card', (clientId, ackCallback) => {
         const game = GameRepository.getGameInstanceByPlayerId(clientId);
 
         const card = GameServices.getRandomItem(game.id, clientId, 'cards', true);
@@ -165,7 +164,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.once('getInstances', (ackCallback) => {
+    socket.once('get-instances', (ackCallback) => {
         ackCallback(GameRepository.getGameInstances(), PlayerRepository.getPlayers());
     });
 
