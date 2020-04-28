@@ -5,6 +5,7 @@ class Player {
         this.isGameMaster = _isGameMaster;
         this.roundsLost = _roundsLost;
         this.socketId = _socketId;
+        this.isActive = true;
     }
 }
 
