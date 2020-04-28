@@ -10,6 +10,9 @@ const GameRepository = {
     getGameInstanceByPlayerId: (playerId) => {
         return gameInstances.find((game) => game.players.some((player) => player.id === playerId))
     },
+    getGameInstanceByPlayerSocketId: (sockedId) => {
+        return gameInstances.find((game) => game.players.some((player) => player.socketId === sockedId))
+    },
     addPlayerToGameInstance: (id, player) => {
         gameInstances
             .find((game) => game.id === id)
@@ -37,6 +40,12 @@ const GameRepository = {
             .players
             .find((player) => player.id === playerId);
     },
+    getPlayerBySocketIdForGame: (gameId, socketId) => {
+        return gameInstances
+            .find((game) => game.id === gameId)
+            .players
+            .find((player) => player.socketId === socketId);
+    },
     getPlayerByNameForGame: (gameId, playerName) => {
         return gameInstances
             .find((game) => game.id === gameId)
@@ -59,6 +68,9 @@ const GameRepository = {
     },
     playerIsInGame: (playerId) => {
         return gameInstances.some((game) => game.players.some((player) => player.id === playerId));
+    },
+    playerIsInGameBySocketId: (sockedId) => {
+        return gameInstances.some((game) => game.players.some((player) => player.socketId === sockedId));
     }
 };
 
