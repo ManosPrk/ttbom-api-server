@@ -27,8 +27,8 @@ const GameService = {
         })
         return { message: `${player.name} joined the game!`, players };
     },
-    isInstanceValid: (gameId) => {
-        if (GameRepository.getGameInstanceById(gameId)) {
+    isInstanceValid: (socketId) => {
+        if (GameRepository.getGameInstanceByPlayerId(socketId)) {
             return true;
         }
         return false;
@@ -53,7 +53,6 @@ const GameService = {
             return { errorMessage: 'You have already started the round!' }
         } else {
             game.playerWithBomb = GameRepository.getPlayerByIdForGame(game.id, playerId);
-            console.log(game.playerWithBomb);
             game.roundStarted = true;
             return { message: 'Let the games begin!', gameMasterMessage: 'Game started!', game };
         }
@@ -73,14 +72,15 @@ const GameService = {
     },
     disconnectPlayer: (game, playerId) => {
         const player = GameRepository.getPlayerByIdForGame(game.id, playerId);
-        if (player.isGameMaster && game.players.length > 1) {
+        if (game.players.length === 0) {
+            GameRepository.deleteGameInstance(game.id);
+            return;
+        } else if (player.isGameMaster && game.players.length > 1) {
             const nextPlayer = GameRepository.getNextPlayer(game.id, playerId);
-            console.log('next player', nextPlayer)
             nextPlayer.isGameMaster = true;
         }
         GameRepository.removePlayerFromGame(game.id, playerId);
-        console.log(game);
-        return { gameId: game.id, players: instance.getPlayersModel(game.id), messsage: `Successfully removed ${player.name} from game ${game.id}` };
+        return { players: instance.getPlayersModel(game.id), messsage: `Successfully removed ${player.name} from game ${game.id}` };
     },
 };
 
