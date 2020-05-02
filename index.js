@@ -111,7 +111,7 @@ io.on('connection', (socket) => {
         const game = GameRepository.getGameInstanceByPlayerId(socket.id);
         const player = GameRepository.getPlayerByIdForGame(game.id, socket.id);
         if (game.isCardDrawn) {
-            io.to(socket.id).emit('update-card', { errorMessage: "You have already drew a card" })
+            io.to(socket.id).emit('update-card', { errorMessage: "You have already drawn a card" })
         } else if (GameRepository.isPlayerGameMaster(game.id, player.id)) {
             const card = GameServices.getRandomItem(game.id, 'cards', true);
             game.isCardDrawn = true;
@@ -133,19 +133,30 @@ io.on('connection', (socket) => {
             io.to(socket.id).emit('change-player', { message: startGameResponse.gameMasterMessage });
             setTimeout(() => {
                 //check if round ended aswell
-                const loser = GameServices.gameEnded(startGameResponse.game.id);
+                const loser = GameServices.roundEnded(startGameResponse.game.id);
                 const game = GameRepository.getGameInstanceByPlayerId(socket.id);
-                console.log(game.id);
-                GameServices.resetGame(game);
                 io.in(game.id).emit('round-ended', {
                     loser: { name: loser.name, roundsLost: loser.roundsLost },
                     updatedPlayers: GameServices.getPlayersModel(game.id),
                     roundStarted: game.roundStarted,
+                    roundEnded: game.roundEnded,
                     gameEnded: game.gameEnded,
                 });
             }, 5 * 1000);
         }
     });
+
+    socket.on('reset-round', (gameId) => {
+        if (GameRepository.isPlayerGameMaster(gameId, socket.id)) {
+            const game = GameRepository.getGameInstanceById(gameId);
+            GameServices.resetGame(game);
+            io.in(game.id).emit('round-resetted', {
+                roundStarted: game.roundStarted,
+                roundEnded: game.roundEnded,
+                gameEnded: game.gameEnded,
+            })
+        }
+    })
 
     socket.on('pass-bomb', () => {
         let game = GameRepository
@@ -170,10 +181,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        const game = GameRepository.getGameInstanceByPlayerId(socket.id);
-        if (game) {
-            const notifyPlayers = GameServices.disconnectPlayer(game, socket.id);
-            notifyPlayers ? socket.in(game.id).emit('player-disconnect', notifyPlayers.message, notifyPlayers.players) : null;
+        const notifyPlayersObject = GameServices.disconnectPlayer(socket.id);
+        if (notifyPlayersObject) {
+            const { gameId, players, newGameMaster, messsage } = notifyPlayersObject;
+            socket.in(gameId).emit('player-disconnect', { messsage, players });
+            io.to(newGameMaster.id).emit('game-master-changed', { message: `${newGameMaster.name} you are the game master now!` })
         }
         console.log(`user with id ${socket.id} disconnected!`);
     })
