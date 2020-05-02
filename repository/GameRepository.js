@@ -52,6 +52,12 @@ const GameRepository = {
             .find((game) => game.id === gameId)
             .players[currentPlayerIndex + 1]
     },
+    getGameMaster: (gameId) => {
+        return gameInstances
+            .find((game) => game.id === gameId)
+            .players
+            .find((player) => player.isGameMaster);
+    },
     removePlayerFromGame: (id, playerId) => {
         let game = gameInstances.find((game) => game.id === id);
         game.players = game
