@@ -54,14 +54,17 @@ const GameService = {
         } else {
             game.playerWithBomb = GameRepository.getPlayerByIdForGame(game.id, playerId);
             game.roundStarted = true;
+            game.roundEnded = false;
             return { message: 'Let the games begin!', gameMasterMessage: 'Game started!', game };
         }
     },
-    gameEnded: (gameId) => {
+    roundEnded: (gameId) => {
         // gameEnded = true;
         game = GameRepository.getGameInstanceById(gameId);
         const loser = GameRepository.getPlayerByIdForGame(game.id, game.playerWithBomb.id);
         loser.roundsLost++;
+        game.roundStarted = false;
+        game.roundEnded = true;
         return loser;
     },
     resetGame: (game) => {
@@ -69,8 +72,13 @@ const GameService = {
         game.isDiceRolled = false;
         game.isCardDrawn = false;
         game.roundStarted = false;
+        game.roundEnded = false;
     },
-    disconnectPlayer: (game, playerId) => {
+    disconnectPlayer: (playerId) => {
+        const game = GameRepository.getGameInstanceByPlayerId(playerId);
+        if (!game) {
+            return;
+        }
         const player = GameRepository.getPlayerByIdForGame(game.id, playerId);
         if (game.players.length === 0) {
             GameRepository.deleteGameInstance(game.id);
@@ -80,7 +88,8 @@ const GameService = {
             nextPlayer.isGameMaster = true;
         }
         GameRepository.removePlayerFromGame(game.id, playerId);
-        return { players: instance.getPlayersModel(game.id), messsage: `Successfully removed ${player.name} from game ${game.id}` };
+        const newGameMaster = GameRepository.getGameMaster(game.id);
+        return { messsage: `${player.name} left the game`, players: instance.getPlayersModel(game.id), gameId: game.id, newGameMaster: newGameMaster };
     },
 };
 
