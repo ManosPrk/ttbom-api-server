@@ -45,7 +45,7 @@ const GameService = {
         })
         return modelPlayers;
     },
-    startGame: (playerId) => {
+    startRound: (playerId) => {
         let game = GameRepository.getGameInstanceByPlayerId(playerId);
         if (!game || !GameRepository.isPlayerGameMaster(game.id, playerId)) {
             return { errorMessage: 'Wait for the Game master to start the game' }
@@ -58,16 +58,19 @@ const GameService = {
             return { message: 'Let the games begin!', gameMasterMessage: 'Game started!', game };
         }
     },
-    roundEnded: (gameId) => {
+    endRound: (gameId) => {
         // gameEnded = true;
         game = GameRepository.getGameInstanceById(gameId);
+        if (game.cards.length < 1) {
+            game.gameOver = true;
+        }
         const loser = GameRepository.getPlayerByIdForGame(game.id, game.playerWithBomb.id);
         loser.roundsLost++;
         game.roundStarted = false;
         game.roundEnded = true;
         return loser;
     },
-    resetGame: (game) => {
+    resetRound: (game) => {
         game.playerWithBomb = game.players[0];
         game.isDiceRolled = false;
         game.isCardDrawn = false;
@@ -76,20 +79,24 @@ const GameService = {
     },
     disconnectPlayer: (playerId) => {
         const game = GameRepository.getGameInstanceByPlayerId(playerId);
+
+
         if (!game) {
             return;
         }
         const player = GameRepository.getPlayerByIdForGame(game.id, playerId);
-        if (game.players.length === 0) {
+        if (game.players.length === 1) {
             GameRepository.deleteGameInstance(game.id);
             return;
         } else if (player.isGameMaster && game.players.length > 1) {
             const nextPlayer = GameRepository.getNextPlayer(game.id, playerId);
             nextPlayer.isGameMaster = true;
+            GameRepository.removePlayerFromGame(game.id, playerId);
+            return { message: `${player.name} left the game`, players: instance.getPlayersModel(game.id), gameId: game.id };
         }
         GameRepository.removePlayerFromGame(game.id, playerId);
         const newGameMaster = GameRepository.getGameMaster(game.id);
-        return { messsage: `${player.name} left the game`, players: instance.getPlayersModel(game.id), gameId: game.id, newGameMaster: newGameMaster };
+        return { message: `${player.name} left the game`, players: instance.getPlayersModel(game.id), gameId: game.id, newGameMaster: newGameMaster };
     },
 };
 
